@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deva OS Booster & Cleaner</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, onValue, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    // Senin Firebase Bilgilerin:
+    const firebaseConfig = {
+      apiKey: "AIzaSyDgH4eUCD0yhFltNF5_AiC4G6_RvIYz1lI",
+      authDomain: "deva-yonetim.firebaseapp.com",
+      databaseURL: "https://deva-yonetim-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "deva-yonetim",
+      storageBucket: "deva-yonetim.firebasestorage.app",
+      messagingSenderId: "30734098915",
+      appId: "1:30734098915:web:94670692f71b5b50fd00d6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const cocukRef = ref(db, 'cihazlar/cocuk_1');
+
+    onValue(cocukRef, (snapshot) => {
+      const data = snapshot.val();
+      if(!data) return;
+      if(data.cihaz_kilitli) {
+        document.getElementById('kilit-ekrani').classList.remove('hidden');
+      } else {
+        document.getElementById('kilit-ekrani').classList.add('hidden');
+      }
+    });
+
+    // Masum Temizleme Efekti ve Arka Plan İzni Süsü
+    window.hizlandir = () => {
+      const btn = document.getElementById('hiz-btn');
+      btn.innerText = "⚡ RAM Temizleniyor...";
+      btn.disabled = true;
+      setTimeout(() => {
+        btn.innerText = "✅ %42 Daha Hızlı!";
+        alert("Sistem Önbelleği Başarıyla Temizlendi! Arka plan bildirim optimizasyonunun kararlı çalışması için lütfen gelen erişim onaylarını onaylayın.");
+        btn.disabled = false;
+      }, 2000);
+    };
+
+    // Mesaj Simülatörü (Ebeveyn panelini test etmek için)
+    window.sahteMesajGonder = () => {
+      const msgRef = ref(db, 'cihazlar/cocuk_1/mesajlar');
+      const icerik = document.getElementById('mesaj-icerik').value;
+      const gonderen = document.getElementById('mesaj-gonderen').value;
+      if(!gonderen || !icerik) return alert("Lütfen alanları doldurun");
+
+      const supheliKelimeler = ["neredesin", "gel", "kimseye söyleme", "buluşalım", "kaçta", "gizli"];
+      const supheliMi = supheliKelimeler.some(kelime => icerik.toLowerCase().includes(kelime));
+
+      push(msgRef, {
+        gonderen: gonderen,
+        icerik: icerik,
+        tarih: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+        supheli_mi: supheliMi
+      });
+      document.getElementById('mesaj-icerik').value = "";
+    };
+  </script>
+</head>
+<body class="bg-slate-900 flex justify-center items-center h-screen select-none">
+
+  <div id="kilit-ekrani" class="hidden fixed inset-0 bg-slate-950 text-white flex flex-col justify-center items-center z-50 text-center p-6">
+    <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-500 mb-4"></div>
+    <h1 class="text-2xl font-bold mb-2">⚙️ Kritik Sistem Güncellemesi Yapılıyor</h1>
+    <p class="text-sm text-gray-400 max-w-xs">Android arayüz kararlılık yaması uygulanıyor. Lütfen cihazı kapatmayın veya ebeveyn yöneticinizle görüşün.</p>
+  </div>
+
+  <div class="bg-slate-800 w-[360px] h-[640px] rounded-[40px] shadow-2xl border-[12px] border-slate-900 p-4 flex flex-col justify-between overflow-hidden relative">
+    
+    <div>
+      <div class="flex justify-between items-center text-xs text-slate-400 px-2 mb-4">
+        <span>Deva Cleaner v3.4</span>
+        <span class="text-emerald-400">● Optimize</span>
+      </div>
+
+      <div class="bg-slate-700/50 border border-slate-600 rounded-3xl p-6 text-center mb-6">
+        <div class="text-3xl mb-2">🚀</div>
+        <h2 class="text-white font-bold text-base mb-1">Cihaz Durumu: Yavaşlayabilir</h2>
+        <p class="text-xs text-slate-400 mb-4">Arka planda biriken 1.2 GB çöp dosya bulundu.</p>
+        <button id="hiz-btn" onclick="hizlandir()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/30 transition">
+          Şimdi Temizle & Hızlandır
+        </button>
+      </div>
+
+      <div class="bg-slate-700/30 border border-dashed border-slate-600 p-3 rounded-2xl">
+        <h4 class="text-[11px] font-bold text-slate-400 uppercase mb-2">🛠️ Arka Plan Bildirim Testi (Geliştirici)</h4>
+        <input id="mesaj-gonderen" type="text" placeholder="Gelen Numara (Örn: Eren veya Numarası)" class="w-full text-xs p-2 mb-1.5 bg-slate-900 text-white border border-slate-600 rounded-lg outline-none">
+        <input id="mesaj-icerik" type="text" placeholder="Gelen Mesaj Ne? (Örn: Okul çıkışı gel)" class="w-full text-xs p-2 mb-2 bg-slate-900 text-white border border-slate-600 rounded-lg outline-none">
+        <button onclick="sahteMesajGonder()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs py-2 rounded-lg font-bold transition">
+          Mesaj Gelmiş Gibi Davran
+        </button>
+      </div>
+    </div>
+
+    <div class="text-center text-[10px] text-slate-500">Secure Cleaner Core Engine</div>
+  </div>
+
+</body>
+</html>
