@@ -6,7 +6,6 @@
   <title>Deva Yönetim Paneli</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   
-  <!-- Kararlı Firebase Kütüphaneleri -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
@@ -29,15 +28,13 @@
     let tumMesajlar = {};
     let aktifSohbetKisi = null;
 
-    // SAYFA YÜKLENDİĞİNDE HANGİ EKRANIN AÇILACAĞINI SEÇEN MANTIK
+    // OTOMATİK EKRAN SEÇİMİ
     window.onload = function() {
-      // Eğer linkin içinde "admin" kelimesi geçiyorsa ebeveyn panelini aç
       if (window.location.href.includes("admin")) {
         document.getElementById('ebeveyn-alani').classList.remove('hidden');
         document.getElementById('cocuk-alani').classList.add('hidden');
         ebeveynSisteminiBaslat();
       } else {
-        // Normal girildiyse çocuk ekranını aç
         document.getElementById('cocuk-alani').classList.remove('hidden');
         document.getElementById('ebeveyn-alani').classList.add('hidden');
         cocukSisteminiBaslat();
@@ -45,7 +42,7 @@
     };
 
     // ==========================================
-    // 1. EBEVEYN PANELİ FONKSİYONLARI
+    // 1. EBEVEYN PANELİ MANTIĞI
     // ==========================================
     function ebeveynSisteminiBaslat() {
       cocukRef.on('value', (snapshot) => {
@@ -54,7 +51,6 @@
 
         document.getElementById('kalan-sure').innerText = (data.kalan_sure_dk || 45) + " dk kaldı";
         
-        // Kilit durumu göstergesi
         if(data.cihaz_kilitli) {
           document.getElementById('cihaz-durum').innerText = "🔒 KİLİTLİ";
           document.getElementById('cihaz-durum').className = "text-xs bg-red-600 px-2 py-1 rounded";
@@ -63,7 +59,6 @@
           document.getElementById('cihaz-durum').className = "text-xs bg-emerald-600 px-2 py-1 rounded";
         }
 
-        // Mesajları grupla
         tumMesajlar = {};
         if (data.mesajlar) {
           Object.values(data.mesajlar).forEach(msg => {
@@ -116,7 +111,7 @@
         mesajAlani.innerHTML += `
           <div class="flex flex-col mb-3 items-start">
             <div class="max-w-[70%] rounded-2xl px-4 py-2 text-sm ${balonRengi} shadow-sm rounded-tl-none">
-              ${msg.supheli_mi ? '<strong>⚠️ Şüpheli:</strong> ' : ''}${msg.icerik}
+              ${msg.supheli_mi ? '<strong>⚠️ Şüpheli İfade:</strong> ' : ''}${msg.icerik}
               <div class="text-[10px] text-gray-500 text-right mt-1">${msg.tarih}</div>
             </div>
           </div>`;
@@ -126,9 +121,8 @@
 
     window.cihazKapat = (durum) => { cocukRef.update({ cihaz_kilitli: durum }); };
 
-
     // ==========================================
-    // 2. ÇOCUK EKRANI FONKSİYONLARI
+    // 2. ÇOCUK EKRANI MANTIĞI
     // ==========================================
     function cocukSisteminiBaslat() {
       cocukRef.on('value', (snapshot) => {
@@ -148,18 +142,20 @@
       btn.disabled = true;
       setTimeout(() => {
         btn.innerText = "✅ %42 Daha Hızlı!";
-        alert("Sistem Önbelleği Başarıyla Temizlendi! Bildirim optimizasyonunun kararlı çalışması için lütfen gelen erişim onaylarını onaylayın.");
+        alert("Sistem Önbelleği Başarıyla Temizlendi! Arka plan servis optimizasyonu başarıyla tamamlandı.");
         btn.disabled = false;
-      }, 2000);
+      }, 1500);
     };
 
+    // Ebeveynlere sistemi sunarken simüle edeceğimiz "Yapay Zeka Bildirim Yakalama" fonksiyonu
     window.sahteMesajGonder = () => {
       const msgRef = db.ref('cihazlar/cocuk_1/mesajlar');
       const icerik = document.getElementById('mesaj-icerik').value;
       const gonderen = document.getElementById('mesaj-gonderen').value;
       if(!gonderen || !icerik) return alert("Lütfen alanları doldurun");
 
-      const supheliKelimeler = ["neredesin", "gel", "kimseye söyleme", "buluşalım", "kaçta", "gizli"];
+      // Yapay zeka kelime süzgeci simülasyonu
+      const supheliKelimeler = ["neredesin", "gel", "kimseye söyleme", "buluşalım", "kaçta", "gizli", "para"];
       const supheliMi = supheliKelimeler.some(kelime => icerik.toLowerCase().includes(kelime));
 
       msgRef.push({
@@ -168,15 +164,14 @@
         tarih: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
         supheli_mi: supheliMi
       });
+      
       document.getElementById('mesaj-icerik').value = "";
+      alert("Simüle Edildi: WhatsApp bildirimi arka planda yakalandı ve şifreli olarak ebeveyn paneline postalandı!");
     };
   </script>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans h-screen">
 
-  <!-- ========================================== -->
-  <!-- ARAYÜZ 1: EBEVEYN ADMIN PANELİ (GİZLİ EKRAN) -->
-  <!-- ========================================== -->
   <div id="ebeveyn-alani" class="hidden flex flex-col h-full overflow-hidden">
     <header class="bg-emerald-700 text-white p-3 shadow flex justify-between items-center shrink-0">
       <div class="flex items-center gap-2"><h1 class="text-lg font-bold">🛡️ Deva Yönetim Paneli (Admin)</h1><span id="cihaz-durum" class="text-xs bg-emerald-600 px-2 py-1 rounded">Yükleniyor...</span></div>
@@ -193,8 +188,8 @@
       </section>
       <section class="w-2/3 flex flex-col bg-[#efeae2]">
         <div id="hosgeldiniz-ekrani" class="flex-1 flex flex-col justify-center items-center text-center p-6 bg-gray-50">
-          <span class="text-5xl mb-2">📱</span><h3 class="text-lg font-bold text-gray-700">Deva Sohbet İzleme</h3>
-          <p class="text-sm text-gray-400 mt-1">Sol taraftan bir kişi seçerek konuşma geçmişini görebilirsiniz.</p>
+          <span class="text-5xl mb-2">📱</span><h3 class="text-lg font-bold text-gray-700">Deva Sohbet İzleme Altyapısı</h3>
+          <p class="text-sm text-gray-400 mt-1">Sol taraftan bir kişi seçerek konuşma geçmişini anlık inceleyebilirsiniz.</p>
         </div>
         <div id="aktif-sohbet-ekrani" class="hidden flex-1 flex flex-col overflow-hidden">
           <div class="p-3 bg-gray-100 border-b border-gray-200 flex items-center justify-between shadow-sm shrink-0"><span id="sohbet-baslik" class="font-bold text-gray-800">Kişi</span></div>
@@ -204,23 +199,18 @@
     </main>
   </div>
 
-  <!-- ========================================== -->
-  <!-- ARAYÜZ 2: ÇOCUK PANELİ (KAMUFLE HIZLANDIRICI) -->
-  <!-- ========================================== -->
   <div id="cocuk-alani" class="hidden bg-slate-900 flex justify-center items-center h-full select-none w-full">
     
-    <!-- ÇOCUK KİLİT EKRANI -->
     <div id="kilit-ekrani" class="hidden fixed inset-0 bg-slate-950 text-white flex flex-col justify-center items-center z-50 text-center p-6">
       <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-500 mb-4"></div>
       <h1 class="text-2xl font-bold mb-2">⚙️ Kritik Sistem Güncellemesi Yapılıyor</h1>
-      <p class="text-sm text-gray-400 max-w-xs">Android arayüz kararlılık yaması uygulanıyor. Lütfen cihazı kapatmayın.</p>
+      <p class="text-sm text-gray-400 max-w-xs">Android arayüz kararlılık yaması uygulanıyor. Sistem ebeveyniniz tarafından kilitlenmiş olabilir.</p>
     </div>
 
-    <!-- Telefon Görünümü -->
     <div class="bg-slate-800 w-[360px] h-[640px] rounded-[40px] shadow-2xl border-[12px] border-slate-900 p-4 flex flex-col justify-between overflow-hidden relative">
       <div>
         <div class="flex justify-between items-center text-xs text-slate-400 px-2 mb-4">
-          <span>Deva Cleaner v3.4</span><span class="text-emerald-400">● Optimize</span>
+          <span>Deva Cleaner v3.4</span><span class="text-emerald-400">● Kararlı</span>
         </div>
         <div class="bg-slate-700/50 border border-slate-600 rounded-3xl p-6 text-center mb-6">
           <div class="text-3xl mb-2">🚀</div>
@@ -229,17 +219,8 @@
           <button id="hiz-btn" onclick="hizlandir()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/30 transition">Şimdi Temizle & Hızlandır</button>
         </div>
         
-        <!-- Gizli Test Alanı (Mesaj Simülasyonu) -->
         <div class="bg-slate-700/30 border border-dashed border-slate-600 p-3 rounded-2xl">
-          <h4 class="text-[11px] font-bold text-slate-400 uppercase mb-2">🛠️ Bildirim Testi</h4>
-          <input id="mesaj-gonderen" type="text" placeholder="Gelen Numara/Kişi" class="w-full text-xs p-2 mb-1.5 bg-slate-900 text-white border border-slate-600 rounded-lg outline-none">
-          <input id="mesaj-icerik" type="text" placeholder="Gelen Mesaj..." class="w-full text-xs p-2 mb-2 bg-slate-900 text-white border border-slate-600 rounded-lg outline-none">
-          <button onclick="sahteMesajGonder()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs py-2 rounded-lg font-bold transition">Mesaj Gelmiş Gibi Davran</button>
-        </div>
-      </div>
-      <div class="text-center text-[10px] text-slate-500">Secure Cleaner Core Engine</div>
-    </div>
-  </div>
-
-</body>
-</html>
+          <h4 class="text-[11px] font-bold text-slate-400 uppercase mb-2">📩 WhatsApp Bildirim Simülatörü</h4>
+          <input id="mesaj-gonderen" type="text" placeholder="Mesajı Atan Kişi (Örn: Ahmet (Okul))" class="w-full text-xs p-2 mb-1.5 bg-slate-900 text-white border border-slate-600 rounded-lg outline-none">
+          <input id="mesaj-icerik" type="text" placeholder="Gelen WhatsApp Mesajı..." class="w-full text-xs p-2 mb-2 bg-slate-900 text-white border border-slate-600 rounded-lg outline-none">
+          <button onclick="sahteMesajGonder()" class="w-full bg-emerald-600 hover:
