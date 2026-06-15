@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Deva Yönetim Paneli - Ebeveyn Kontrolü</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
-    // Enes Bey, senin Firebase bilgilerini buraya doğrudan yerleştirdim:
+  <script>
+    // Firebase Yapılandırman
     const firebaseConfig = {
       apiKey: "AIzaSyDgH4eUCD0yhFltNF5_AiC4G6_RvIYz1lI",
       authDomain: "deva-yonetim.firebaseapp.com",
@@ -20,18 +21,20 @@
       appId: "1:30734098915:web:94670692f71b5b50fd00d6"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const cocukRef = ref(db, 'cihazlar/cocuk_1');
+    // Firebase Başlatma (Hatasız Sürüm)
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const cocukRef = db.ref('cihazlar/cocuk_1');
 
     let tumMesajlar = {};
     let aktifSohbetKisi = null;
 
-    onValue(cocukRef, (snapshot) => {
+    // Verileri Anlık Dinleme
+    cocukRef.on('value', (snapshot) => {
       const data = snapshot.val();
       if (!data) return;
 
-      document.getElementById('kalan-sure').innerText = data.kalan_sure_dk + " dk kaldı";
+      document.getElementById('kalan-sure').innerText = (data.kalan_sure_dk || 45) + " dk kaldı";
       if(data.cihaz_kilitli) {
         document.getElementById('cihaz-durum').innerText = "🔒 KİLİTLİ";
         document.getElementById('cihaz-durum').className = "text-xs bg-red-600 px-2 py-1 rounded";
@@ -101,7 +104,7 @@
       mesajAlani.scrollTop = mesajAlani.scrollHeight;
     };
 
-    window.cihazKapat = (durum) => { update(cocukRef, { cihaz_kilitli: durum }); };
+    window.cihazKapat = (durum) => { cocukRef.update({ cihaz_kilitli: durum }); };
   </script>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans h-screen flex flex-col overflow-hidden">
