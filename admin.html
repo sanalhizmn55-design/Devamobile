@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deva Yönetim Paneli - Ebeveyn Kontrolü</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    // Enes Bey, senin Firebase bilgilerini buraya doğrudan yerleştirdim:
+    const firebaseConfig = {
+      apiKey: "AIzaSyDgH4eUCD0yhFltNF5_AiC4G6_RvIYz1lI",
+      authDomain: "deva-yonetim.firebaseapp.com",
+      databaseURL: "https://deva-yonetim-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "deva-yonetim",
+      storageBucket: "deva-yonetim.firebasestorage.app",
+      messagingSenderId: "30734098915",
+      appId: "1:30734098915:web:94670692f71b5b50fd00d6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const cocukRef = ref(db, 'cihazlar/cocuk_1');
+
+    let tumMesajlar = {};
+    let aktifSohbetKisi = null;
+
+    onValue(cocukRef, (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      document.getElementById('kalan-sure').innerText = data.kalan_sure_dk + " dk kaldı";
+      if(data.cihaz_kilitli) {
+        document.getElementById('cihaz-durum').innerText = "🔒 KİLİTLİ";
+        document.getElementById('cihaz-durum').className = "text-xs bg-red-600 px-2 py-1 rounded";
+      } else {
+        document.getElementById('cihaz-durum').innerText = "📱 AKTİF";
+        document.getElementById('cihaz-durum').className = "text-xs bg-emerald-600 px-2 py-1 rounded";
+      }
+
+      tumMesajlar = {};
+      if (data.mesajlar) {
+        Object.values(data.mesajlar).forEach(msg => {
+          if (!tumMesajlar[msg.gonderen]) {
+            tumMesajlar[msg.gonderen] = [];
+          }
+          tumMesajlar[msg.gonderen].push(msg);
+        });
+      }
+
+      sohbetListesiniCiz();
+      if (aktifSohbetKisi) { sohbetIceriginiAc(aktifSohbetKisi); }
+    });
+
+    window.sohbetListesiniCiz = () => {
+      const listeKutusu = document.getElementById('sohbet-listesi');
+      listeKutusu.innerHTML = "";
+      const kisiler = Object.keys(tumMesajlar);
+      if(kisiler.length === 0) {
+        listeKutusu.innerHTML = "<p class='p-4 text-gray-400 text-sm text-center'>Henüz gelen mesaj yok.</p>";
+        return;
+      }
+      kisiler.forEach(kisi => {
+        const mesajlar = tumMesajlar[kisi];
+        const sonMesaj = mesajlar[mesajlar.length - 1];
+        const supheliVarMi = mesajlar.some(m => m.supheli_mi);
+        listeKutusu.innerHTML += `
+          <div onclick="sohbetIceriginiAc('${kisi}')" class="flex items-center gap-3 p-3 border-b border-gray-100 hover:bg-gray-100 cursor-pointer transition ${aktifSohbetKisi === kisi ? 'bg-gray-200' : ''}">
+            <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-700">${supheliVarMi ? '🚨' : '💬'}</div>
+            <div class="flex-1 min-w-0">
+              <div class="flex justify-between items-baseline">
+                <h4 class="text-sm font-semibold text-gray-900 truncate">${kisi}</h4>
+                <span class="text-xs text-gray-400">${sonMesaj.tarih}</span>
+              </div>
+              <p class="text-xs text-gray-500 truncate mt-0.5">${sonMesaj.icerik}</p>
+            </div>
+          </div>`;
+      });
+    };
+
+    window.sohbetIceriginiAc = (kisi) => {
+      aktifSohbetKisi = kisi;
+      sohbetListesiniCiz();
+      document.getElementById('hosgeldiniz-ekrani').classList.add('hidden');
+      document.getElementById('aktif-sohbet-ekrani').classList.remove('hidden');
+      document.getElementById('sohbet-baslik').innerText = kisi;
+      const mesajAlani = document.getElementById('sohbet-mesajlari');
+      mesajAlani.innerHTML = "";
+      tumMesajlar[kisi].forEach(msg => {
+        const balonRengi = msg.supheli_mi ? 'bg-red-200 text-red-900 border border-red-300' : 'bg-gray-200 text-gray-800';
+        mesajAlani.innerHTML += `
+          <div class="flex flex-col mb-3 items-start">
+            <div class="max-w-[70%] rounded-2xl px-4 py-2 text-sm ${balonRengi} shadow-sm rounded-tl-none">
+              ${msg.supheli_mi ? '<strong>⚠️ Şüpheli:</strong> ' : ''}${msg.icerik}
+              <div class="text-[10px] text-gray-500 text-right mt-1">${msg.tarih}</div>
+            </div>
+          </div>`;
+      });
+      mesajAlani.scrollTop = mesajAlani.scrollHeight;
+    };
+
+    window.cihazKapat = (durum) => { update(cocukRef, { cihaz_kilitli: durum }); };
+  </script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans h-screen flex flex-col overflow-hidden">
+  <header class="bg-emerald-700 text-white p-3 shadow flex justify-between items-center shrink-0">
+    <div class="flex items-center gap-2"><h1 class="text-lg font-bold">🛡️ Deva Yönetim Paneli</h1><span id="cihaz-durum" class="text-xs bg-emerald-600 px-2 py-1 rounded">Yükleniyor...</span></div>
+    <div class="flex items-center gap-3">
+      <span id="kalan-sure" class="text-sm font-semibold bg-emerald-800 px-3 py-1 rounded-full">-- dk</span>
+      <button onclick="cihazKapat(true)" class="bg-red-600 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-red-700">Cihazı Kilitle</button>
+      <button onclick="cihazKapat(false)" class="bg-sky-600 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-sky-700">Kilidi Aç</button>
+    </div>
+  </header>
+  <main class="flex flex-1 overflow-hidden max-w-7xl w-full mx-auto bg-white shadow-lg">
+    <section class="w-1/3 border-r border-gray-200 flex flex-col bg-white">
+      <div class="p-3 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700 text-sm">💬 Takip Edilen Sohbetler</div>
+      <div id="sohbet-listesi" class="flex-1 overflow-y-auto"></div>
+    </section>
+    <section class="w-2/3 flex flex-col bg-[#efeae2]">
+      <div id="hosgeldiniz-ekrani" class="flex-1 flex flex-col justify-center items-center text-center p-6 bg-gray-50">
+        <span class="text-5xl mb-2">📱</span><h3 class="text-lg font-bold text-gray-700">Deva Sohbet İzleme</h3>
+        <p class="text-sm text-gray-400 mt-1">Sol taraftan bir kişi seçerek konuşma geçmişini görebilirsiniz.</p>
+      </div>
+      <div id="aktif-sohbet-ekrani" class="hidden flex-1 flex flex-col overflow-hidden">
+        <div class="p-3 bg-gray-100 border-b border-gray-200 flex items-center justify-between shadow-sm shrink-0"><span id="sohbet-baslik" class="font-bold text-gray-800">Kişi</span></div>
+        <div id="sohbet-mesajlari" class="flex-1 overflow-y-auto p-4 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat"></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
