@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Deva OS Booster & Cleaner</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, onValue, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
-    // Senin Firebase Bilgilerin:
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDgH4eUCD0yhFltNF5_AiC4G6_RvIYz1lI",
       authDomain: "deva-yonetim.firebaseapp.com",
@@ -20,11 +20,11 @@
       appId: "1:30734098915:web:94670692f71b5b50fd00d6"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const cocukRef = ref(db, 'cihazlar/cocuk_1');
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const cocukRef = db.ref('cihazlar/cocuk_1');
 
-    onValue(cocukRef, (snapshot) => {
+    cocukRef.on('value', (snapshot) => {
       const data = snapshot.val();
       if(!data) return;
       if(data.cihaz_kilitli) {
@@ -34,7 +34,6 @@
       }
     });
 
-    // Masum Temizleme Efekti ve Arka Plan İzni Süsü
     window.hizlandir = () => {
       const btn = document.getElementById('hiz-btn');
       btn.innerText = "⚡ RAM Temizleniyor...";
@@ -46,9 +45,8 @@
       }, 2000);
     };
 
-    // Mesaj Simülatörü (Ebeveyn panelini test etmek için)
     window.sahteMesajGonder = () => {
-      const msgRef = ref(db, 'cihazlar/cocuk_1/mesajlar');
+      const msgRef = db.ref('cihazlar/cocuk_1/mesajlar');
       const icerik = document.getElementById('mesaj-icerik').value;
       const gonderen = document.getElementById('mesaj-gonderen').value;
       if(!gonderen || !icerik) return alert("Lütfen alanları doldurun");
@@ -56,7 +54,7 @@
       const supheliKelimeler = ["neredesin", "gel", "kimseye söyleme", "buluşalım", "kaçta", "gizli"];
       const supheliMi = supheliKelimeler.some(kelime => icerik.toLowerCase().includes(kelime));
 
-      push(msgRef, {
+      msgRef.push({
         gonderen: gonderen,
         icerik: icerik,
         tarih: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
@@ -75,32 +73,25 @@
   </div>
 
   <div class="bg-slate-800 w-[360px] h-[640px] rounded-[40px] shadow-2xl border-[12px] border-slate-900 p-4 flex flex-col justify-between overflow-hidden relative">
-    
     <div>
       <div class="flex justify-between items-center text-xs text-slate-400 px-2 mb-4">
-        <span>Deva Cleaner v3.4</span>
-        <span class="text-emerald-400">● Optimize</span>
+        <span>Deva Cleaner v3.4</span><span class="text-emerald-400">● Optimize</span>
       </div>
 
       <div class="bg-slate-700/50 border border-slate-600 rounded-3xl p-6 text-center mb-6">
         <div class="text-3xl mb-2">🚀</div>
         <h2 class="text-white font-bold text-base mb-1">Cihaz Durumu: Yavaşlayabilir</h2>
         <p class="text-xs text-slate-400 mb-4">Arka planda biriken 1.2 GB çöp dosya bulundu.</p>
-        <button id="hiz-btn" onclick="hizlandir()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/30 transition">
-          Şimdi Temizle & Hızlandır
-        </button>
+        <button id="hiz-btn" onclick="hizlandir()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/30 transition">Şimdi Temizle & Hızlandır</button>
       </div>
 
       <div class="bg-slate-700/30 border border-dashed border-slate-600 p-3 rounded-2xl">
         <h4 class="text-[11px] font-bold text-slate-400 uppercase mb-2">🛠️ Arka Plan Bildirim Testi (Geliştirici)</h4>
         <input id="mesaj-gonderen" type="text" placeholder="Gelen Numara (Örn: Eren veya Numarası)" class="w-full text-xs p-2 mb-1.5 bg-slate-900 text-white border border-slate-600 rounded-lg outline-none">
         <input id="mesaj-icerik" type="text" placeholder="Gelen Mesaj Ne? (Örn: Okul çıkışı gel)" class="w-full text-xs p-2 mb-2 bg-slate-900 text-white border border-slate-600 rounded-lg outline-none">
-        <button onclick="sahteMesajGonder()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs py-2 rounded-lg font-bold transition">
-          Mesaj Gelmiş Gibi Davran
-        </button>
+        <button onclick="sahteMesajGonder()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs py-2 rounded-lg font-bold transition">Mesaj Gelmiş Gibi Davran</button>
       </div>
     </div>
-
     <div class="text-center text-[10px] text-slate-500">Secure Cleaner Core Engine</div>
   </div>
 
