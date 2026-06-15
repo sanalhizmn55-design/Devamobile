@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Deva Yönetim Paneli</title>
+  <title>Deva Cihaz Yönetimi ve İzin Sistemi</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   
+  <!-- Kararlı Firebase Kütüphaneleri -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
@@ -23,204 +24,195 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const cocukRef = db.ref('cihazlar/cocuk_1');
+    const cihazRef = db.ref('cihazlar/cihaz_2'); // Testleri 2. Cihaz üzerinden yapıyoruz
 
-    let tumMesajlar = {};
-    let aktifSohbetKisi = null;
-
-    // OTOMATİK EKRAN SEÇİMİ
     window.onload = function() {
+      // Link kontrolü ile ekran ayırma
       if (window.location.href.includes("admin")) {
-        document.getElementById('ebeveyn-alani').classList.remove('hidden');
-        document.getElementById('cocuk-alani').classList.add('hidden');
-        ebeveynSisteminiBaslat();
+        document.getElementById('ebeveyn-paneli').classList.remove('hidden');
+        document.getElementById('cihaz-izin-ekrani').classList.add('hidden');
+        adminPaneliniBaslat();
       } else {
-        document.getElementById('cocuk-alani').classList.remove('hidden');
-        document.getElementById('ebeveyn-alani').classList.add('hidden');
-        cocukSisteminiBaslat();
+        document.getElementById('cihaz-izin-ekrani').classList.remove('hidden');
+        document.getElementById('ebeveyn-paneli').classList.add('hidden');
+        cihazSisteminiBaslat();
       }
     };
 
     // ==========================================
-    // 1. EBEVEYN PANELİ MANTIĞI
+    // 1. CİHAZ (İSTASYON) EKRANI MANTIĞI
     // ==========================================
-    function ebeveynSisteminiBaslat() {
-      cocukRef.on('value', (snapshot) => {
+    function cihazSisteminiBaslat() {
+      // Uzaktan kilitleme durumunu dinle
+      cihazRef.on('value', (snapshot) => {
         const data = snapshot.val();
-        if (!data) return;
-
-        document.getElementById('kalan-sure').innerText = (data.kalan_sure_dk || 45) + " dk kaldı";
-        
-        if(data.cihaz_kilitli) {
-          document.getElementById('cihaz-durum').innerText = "🔒 KİLİTLİ";
-          document.getElementById('cihaz-durum').className = "text-xs bg-red-600 px-2 py-1 rounded";
+        if(data && data.cihaz_kilitli) {
+          document.getElementById('uzaktan-kilit').classList.remove('hidden');
         } else {
-          document.getElementById('cihaz-durum').innerText = "📱 AKTİF";
-          document.getElementById('cihaz-durum').className = "text-xs bg-emerald-600 px-2 py-1 rounded";
-        }
-
-        tumMesajlar = {};
-        if (data.mesajlar) {
-          Object.values(data.mesajlar).forEach(msg => {
-            if (!tumMesajlar[msg.gonderen]) tumMesajlar[msg.gonderen] = [];
-            tumMesajlar[msg.gonderen].push(msg);
-          });
-        }
-
-        sohbetListesiniCiz();
-        if (aktifSohbetKisi) { sohbetIceriginiAc(aktifSohbetKisi); }
-      });
-    }
-
-    window.sohbetListesiniCiz = () => {
-      const listeKutusu = document.getElementById('sohbet-listesi');
-      listeKutusu.innerHTML = "";
-      const kisiler = Object.keys(tumMesajlar);
-      if(kisiler.length === 0) {
-        listeKutusu.innerHTML = "<p class='p-4 text-gray-400 text-sm text-center'>Henüz gelen mesaj yok.</p>";
-        return;
-      }
-      kisiler.forEach(kisi => {
-        const mesajlar = tumMesajlar[kisi];
-        const sonMesaj = mesajlar[mesajlar.length - 1];
-        const supheliVarMi = mesajlar.some(m => m.supheli_mi);
-        listeKutusu.innerHTML += `
-          <div onclick="sohbetIceriginiAc('${kisi}')" class="flex items-center gap-3 p-3 border-b border-gray-100 hover:bg-gray-100 cursor-pointer transition ${aktifSohbetKisi === kisi ? 'bg-gray-200' : ''}">
-            <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-700">${supheliVarMi ? '🚨' : '💬'}</div>
-            <div class="flex-1 min-w-0">
-              <div class="flex justify-between items-baseline">
-                <h4 class="text-sm font-semibold text-gray-900 truncate">${kisi}</h4>
-                <span class="text-xs text-gray-400">${sonMesaj.tarih}</span>
-              </div>
-              <p class="text-xs text-gray-500 truncate mt-0.5">${sonMesaj.icerik}</p>
-            </div>
-          </div>`;
-      });
-    };
-
-    window.sohbetIceriginiAc = (kisi) => {
-      aktifSohbetKisi = kisi;
-      sohbetListesiniCiz();
-      document.getElementById('hosgeldiniz-ekrani').classList.add('hidden');
-      document.getElementById('aktif-sohbet-ekrani').classList.remove('hidden');
-      document.getElementById('sohbet-baslik').innerText = kisi;
-      const mesajAlani = document.getElementById('sohbet-mesajlari');
-      mesajAlani.innerHTML = "";
-      tumMesajlar[kisi].forEach(msg => {
-        const balonRengi = msg.supheli_mi ? 'bg-red-200 text-red-900 border border-red-300' : 'bg-gray-200 text-gray-800';
-        mesajAlani.innerHTML += `
-          <div class="flex flex-col mb-3 items-start">
-            <div class="max-w-[70%] rounded-2xl px-4 py-2 text-sm ${balonRengi} shadow-sm rounded-tl-none">
-              ${msg.supheli_mi ? '<strong>⚠️ Şüpheli İfade:</strong> ' : ''}${msg.icerik}
-              <div class="text-[10px] text-gray-500 text-right mt-1">${msg.tarih}</div>
-            </div>
-          </div>`;
-      });
-      mesajAlani.scrollTop = mesajAlani.scrollHeight;
-    };
-
-    window.cihazKapat = (durum) => { cocukRef.update({ cihaz_kilitli: durum }); };
-
-    // ==========================================
-    // 2. ÇOCUK EKRANI MANTIĞI
-    // ==========================================
-    function cocukSisteminiBaslat() {
-      cocukRef.on('value', (snapshot) => {
-        const data = snapshot.val();
-        if(!data) return;
-        if(data.cihaz_kilitli) {
-          document.getElementById('kilit-ekrani').classList.remove('hidden');
-        } else {
-          document.getElementById('kilit-ekrani').classList.add('hidden');
+          document.getElementById('uzaktan-kilit').classList.add('hidden');
         }
       });
     }
 
-    window.hizlandir = () => {
-      const btn = document.getElementById('hiz-btn');
-      btn.innerText = "⚡ RAM Temizleniyor...";
+    // İZİN BUTONUNA BASILDIĞINDA ÇALIŞACAK FONKSİYON
+    window.izinSagla = () => {
+      const btn = document.getElementById('izin-btn');
+      btn.innerText = "⏳ İzin İsteniyor...";
       btn.disabled = true;
+
       setTimeout(() => {
-        btn.innerText = "✅ %42 Daha Hızlı!";
-        alert("Sistem Önbelleği Başarıyla Temizlendi! Arka plan servis optimizasyonu başarıyla tamamlandı.");
-        btn.disabled = false;
-      }, 1500);
+        // Tarayıcı üzerinden sahte bir izin penceresi tetikliyoruz (Simülasyon için)
+        const onay = confirm("Deva Cleaner uygulamasının 'Bildirim Kutusu Erişim Hizmeti'ne (Notification Listener) erişmesine izin veriyor musunuz?\n\nBu izin cihazlar arası senkronizasyon için gereklidir.");
+        
+        if(onay) {
+          // Firebase'e iznin onaylandığını yazıyoruz
+          cihazRef.update({
+            bildirim_izni: "ONAYLANDI",
+            izin_tarihi: new Date().toLocaleTimeString('tr-TR')
+          });
+          btn.innerText = "🔒 İzin Sağlandı (Aktif)";
+          btn.className = "w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm shadow-md";
+          alert("Bildirim kutusuna erişim sağlandı! Cihaz şu andan itibaren eşleşen ana panel tarafından uzaktan denetlenebilir.");
+        } else {
+          btn.innerText = "❌ İzin Reddedildi";
+          btn.className = "w-full bg-red-600 text-white py-3 rounded-xl font-bold text-sm shadow-md";
+          btn.disabled = false;
+        }
+      }, 1000);
     };
 
-    // Ebeveynlere sistemi sunarken simüle edeceğimiz "Yapay Zeka Bildirim Yakalama" fonksiyonu
-    window.sahteMesajGonder = () => {
-      const msgRef = db.ref('cihazlar/cocuk_1/mesajlar');
-      const icerik = document.getElementById('mesaj-icerik').value;
-      const gonderen = document.getElementById('mesaj-gonderen').value;
-      if(!gonderen || !icerik) return alert("Lütfen alanları doldurun");
 
-      // Yapay zeka kelime süzgeci simülasyonu
-      const supheliKelimeler = ["neredesin", "gel", "kimseye söyleme", "buluşalım", "kaçta", "gizli", "para"];
-      const supheliMi = supheliKelimeler.some(kelime => icerik.toLowerCase().includes(kelime));
+    // ==========================================
+    // 2. ANA TELEFON (ADMIN) PANELİ MANTIĞI
+    // ==========================================
+    function adminPaneliniBaslat() {
+      cihazRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        
+        // Kilit göstergesi güncelleme
+        const kilitDurumEl = document.getElementById('adm-kilit-durum');
+        if(data && data.cihaz_kilitli) {
+          kilitDurumEl.innerText = "KİLİTLİ";
+          kilitDurumEl.className = "text-xs font-bold bg-red-100 text-red-700 px-2.5 py-1 rounded-full border border-red-200";
+        } else {
+          kilitDurumEl.innerText = "AKTİF / AÇIK";
+          kilitDurumEl.className = "text-xs font-bold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200";
+        }
 
-      msgRef.push({
-        gonderen: gonderen,
-        icerik: icerik,
-        tarih: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-        supheli_mi: supheliMi
+        // İzin durumunu Firebase'den anlık oku ve ekrana yansıt
+        const izinDurumEl = document.getElementById('adm-izin-durum');
+        if(data && data.bildirim_izni === "ONAYLANDI") {
+          izinDurumEl.innerText = `🟢 Erişim Sağlandı (${data.izin_tarihi})`;
+          izinDurumEl.className = "text-sm font-semibold text-emerald-600";
+          document.getElementById('izin-uyari-kutusu').innerHTML = `
+            <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-xs text-emerald-800">
+              <strong>Başarılı:</strong> Diğer cihaz 'Bildirim Kutusu Erişim Hizmeti'ni onayladı. Cihaz şu an senkronize durumda.
+            </div>`;
+        } else {
+          izinDurumEl.innerText = "🔴 İzin Bekleniyor...";
+          izinDurumEl.className = "text-sm font-semibold text-amber-600 animate-pulse";
+          document.getElementById('izin-uyari-kutusu').innerHTML = `
+            <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl text-xs text-amber-800">
+              <strong>Bekleniyor:</strong> Diğer telefondan henüz 'Erişim Sağla' butonuna basılmadı.
+            </div>`;
+        }
       });
-      
-      document.getElementById('mesaj-icerik').value = "";
-      alert("Simüle Edildi: WhatsApp bildirimi arka planda yakalandı ve şifreli olarak ebeveyn paneline postalandı!");
+    }
+
+    window.cihazKilitle = (durum) => {
+      cihazRef.update({ cihaz_kilitli: durum });
     };
   </script>
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans h-screen">
+<body class="bg-slate-50 text-slate-800 font-sans h-screen flex justify-center items-center">
 
-  <div id="ebeveyn-alani" class="hidden flex flex-col h-full overflow-hidden">
-    <header class="bg-emerald-700 text-white p-3 shadow flex justify-between items-center shrink-0">
-      <div class="flex items-center gap-2"><h1 class="text-lg font-bold">🛡️ Deva Yönetim Paneli (Admin)</h1><span id="cihaz-durum" class="text-xs bg-emerald-600 px-2 py-1 rounded">Yükleniyor...</span></div>
-      <div class="flex items-center gap-3">
-        <span id="kalan-sure" class="text-sm font-semibold bg-emerald-800 px-3 py-1 rounded-full">-- dk</span>
-        <button onclick="cihazKapat(true)" class="bg-red-600 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-red-700">Cihazı Kilitle</button>
-        <button onclick="cihazKapat(false)" class="bg-sky-600 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-sky-700">Kilidi Aç</button>
-      </div>
-    </header>
-    <main class="flex flex-1 overflow-hidden max-w-7xl w-full mx-auto bg-white shadow-lg">
-      <section class="w-1/3 border-r border-gray-200 flex flex-col bg-white">
-        <div class="p-3 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700 text-sm">💬 Takip Edilen Sohbetler</div>
-        <div id="sohbet-listesi" class="flex-1 overflow-y-auto"></div>
-      </section>
-      <section class="w-2/3 flex flex-col bg-[#efeae2]">
-        <div id="hosgeldiniz-ekrani" class="flex-1 flex flex-col justify-center items-center text-center p-6 bg-gray-50">
-          <span class="text-5xl mb-2">📱</span><h3 class="text-lg font-bold text-gray-700">Deva Sohbet İzleme Altyapısı</h3>
-          <p class="text-sm text-gray-400 mt-1">Sol taraftan bir kişi seçerek konuşma geçmişini anlık inceleyebilirsiniz.</p>
-        </div>
-        <div id="aktif-sohbet-ekrani" class="hidden flex-1 flex flex-col overflow-hidden">
-          <div class="p-3 bg-gray-100 border-b border-gray-200 flex items-center justify-between shadow-sm shrink-0"><span id="sohbet-baslik" class="font-bold text-gray-800">Kişi</span></div>
-          <div id="sohbet-mesajlari" class="flex-1 overflow-y-auto p-4 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat"></div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <div id="cocuk-alani" class="hidden bg-slate-900 flex justify-center items-center h-full select-none w-full">
+  <!-- ========================================== -->
+  <!-- EKRAN 1: DİĞER CİHAZ (İZİN İSTENECEK TELEFON) -->
+  <!-- ========================================== -->
+  <div id="cihaz-izin-ekrani" class="hidden w-[350px] h-[600px] bg-slate-900 border-[10px] border-slate-950 rounded-[40px] p-5 shadow-2xl flex flex-col justify-between text-white relative">
     
-    <div id="kilit-ekrani" class="hidden fixed inset-0 bg-slate-950 text-white flex flex-col justify-center items-center z-50 text-center p-6">
-      <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-500 mb-4"></div>
-      <h1 class="text-2xl font-bold mb-2">⚙️ Kritik Sistem Güncellemesi Yapılıyor</h1>
-      <p class="text-sm text-gray-400 max-w-xs">Android arayüz kararlılık yaması uygulanıyor. Sistem ebeveyniniz tarafından kilitlenmiş olabilir.</p>
+    <!-- SAHTE UZAKTAN KİLİT EKRANI -->
+    <div id="uzaktan-kilit" class="hidden fixed inset-0 bg-slate-950 text-center flex flex-col justify-center items-center p-6 z-50 rounded-[30px]">
+      <span class="text-4xl mb-2">🔒</span>
+      <h2 class="text-lg font-bold">Cihaz Erişime Kapatıldı</h2>
+      <p class="text-xs text-slate-400 mt-2 max-w-xs">Bu cihaz, 1. Ana Telefonunuz tarafından geçici olarak kilitlenmiştir.</p>
     </div>
 
-    <div class="bg-slate-800 w-[360px] h-[640px] rounded-[40px] shadow-2xl border-[12px] border-slate-900 p-4 flex flex-col justify-between overflow-hidden relative">
-      <div>
-        <div class="flex justify-between items-center text-xs text-slate-400 px-2 mb-4">
-          <span>Deva Cleaner v3.4</span><span class="text-emerald-400">● Kararlı</span>
-        </div>
-        <div class="bg-slate-700/50 border border-slate-600 rounded-3xl p-6 text-center mb-6">
-          <div class="text-3xl mb-2">🚀</div>
-          <h2 class="text-white font-bold text-base mb-1">Cihaz Durumu: Yavaşlayabilir</h2>
-          <p class="text-xs text-slate-400 mb-4">Arka planda biriken 1.2 GB çöp dosya bulundu.</p>
-          <button id="hiz-btn" onclick="hizlandir()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/30 transition">Şimdi Temizle & Hızlandır</button>
-        </div>
+    <div>
+      <div class="flex justify-between items-center text-[10px] text-slate-400 mb-6">
+        <span>Deva Core Engine v4</span>
+        <span class="text-indigo-400">● Kurulum Sihirbazı</span>
+      </div>
+
+      <div class="bg-slate-800/80 border border-slate-700 p-5 rounded-2xl text-center mb-4">
+        <span class="text-3xl block mb-2">⚙️</span>
+        <h2 class="text-sm font-bold mb-1">Sistem Optimizasyonu</h2>
+        <p class="text-[11px] text-slate-400">Arka plan bildirim aktarım köprüsünün kararlı çalışabilmesi için sistem izni gerekiyor.</p>
+      </div>
+
+      <!-- İŞTE İSTEDİĞİN İZİN ERİŞİM BUTONU -->
+      <div class="bg-slate-800/40 border border-dashed border-slate-700 p-4 rounded-2xl">
+        <h3 class="text-xs font-bold text-indigo-300 mb-2">Gerekli Sistem İzinleri</h3>
+        <p class="text-[10px] text-slate-400 mb-4">Uygulamanın gelen bildirim kutularını okuyabilmesi için lütfen aşağıdaki butondan erişim sağlayın.</p>
         
-        <div class="bg-slate-700/30 border border-dashed border-slate-600 p-3 rounded-2xl">
-          <h4 class="text-[11px] font-bold text-slate-400 uppercase mb-2">📩 WhatsApp Bildirim Simülatörü</h4>
-          <input id="mesaj-gonderen" type="text" placeholder="Mesajı Atan Kişi (Örn: Ahmet (Okul))" class="w-full text-xs p-2 mb-1.5 bg-slate-900 text-white border border-slate-600 rounded-lg outline-none">
-          <input id="mesaj-icerik" type="text" placeholder="Gelen WhatsApp Mesajı..." class="w-full text-xs p-2 mb-2 bg-slate-900 text-white border border-slate-600 rounded-lg outline-none">
-          <button onclick="sahteMesajGonder()" class="w-full bg-emerald-600 hover:
+        <button id="izin-btn" onclick="izinSagla()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-indigo-600/30 transition">
+          🚀 Bildirim gelmesine Erişim Sağla
+        </button>
+      </div>
+    </div>
+
+    <div class="text-center text-[9px] text-slate-500 tracking-wider uppercase">Cihaz Bağlantı İstasyonu</div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- EKRAN 2: SENİN TELEFONUN (ANA YÖNETİM PANELİ) -->
+  <!-- ========================================== -->
+  <div id="ebeveyn-paneli" class="hidden w-[350px] h-[600px] bg-white border-[10px] border-slate-200 rounded-[40px] p-5 shadow-2xl flex flex-col justify-between text-slate-800">
+    <div>
+      <div class="flex justify-between items-center text-[10px] text-slate-400 mb-4">
+        <span class="font-bold text-indigo-600">🛡️ DEVA MERKEZİ PANEL</span>
+        <span>Mod: Admin</span>
+      </div>
+
+      <!-- Cihaz Genel Bilgileri -->
+      <div class="bg-slate-50 border border-slate-100 p-4 rounded-2xl mb-4 flex flex-col gap-2">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-semibold text-slate-500">Hedef Cihaz:</span>
+          <span class="text-xs font-bold text-slate-800">2. Telefonum</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-semibold text-slate-500">Durum:</span>
+          <span id="adm-kilit-durum">Yükleniyor...</span>
+        </div>
+      </div>
+
+      <!-- İZİN DURUMU TAKİP ALANI -->
+      <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm mb-4">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">İzin Kontrolü</h3>
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-xs font-medium text-slate-600">Erişim İzni Durumu:</span>
+          <span id="adm-izin-durum">Denetleniyor...</span>
+        </div>
+        <div id="izin-uyari-kutusu"></div>
+      </div>
+
+      <!-- UZAKTAN KONTROL BUTONLARI -->
+      <div class="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Uzaktan Müdahale</h3>
+        <div class="flex gap-2">
+          <button onclick="cihazKilitle(true)" class="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs py-2.5 rounded-xl font-bold transition shadow-md">
+            Cihazı Kilitle
+          </button>
+          <button onclick="cihazKilitle(false)" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text Red-xs py-2.5 rounded-xl font-bold transition">
+            Kilidi Kaldır
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center text-[9px] text-slate-400 font-medium">Deva Core Management Dashboard</div>
+  </div>
+
+</body>
+</html>
